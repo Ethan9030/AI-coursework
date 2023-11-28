@@ -1,12 +1,33 @@
 % Accomplish a given Task and return the Cost
 solve_task(Task,Cost) :-
     my_agent(A), get_agent_position(A,P),
-    solve_task_astar(Task, [[38,38,0,P|RPath]], [], Path),
-    %solve_task_bfs(Task,[[P]],[],Path),   
-    agent_do_moves(A,Path), 
-    length(Path,Cost).
+    (condition_go_true(Task) -> (heruistic(Task,P,D),
+                            solve_task_astar(Task, [(D:[P])], [], Path),   
+                            agent_do_moves(A,Path), 
+                            length(Path,Cost))
+    ;condition_find_true(Task) -> (solve_task_bfs(Task,[[P]],[],Path),
+                    agent_do_moves(A,Path), 
+                    length(Path,Cost))).
+    
+% Calculate the path required to achieve a Task using A* search
+solve_task_astar(Task,Queue,Visited,Path) :-
+    Queue = [Next | Rest],
+    Next = (_:[Pos|RPath]),
+    (achieved(Task,Pos) -> reverse([Pos|RPath],[_|Path])
+    ;otherwise -> (findall(
+        (NF:[NP,Pos|RPath]),
+        (map_adjacent(Pos,NP,empty),
+        length(Queue,X), NG is X,
+        heruistic(Task,NP,NH),
+        NF is NG + NH,
+        \+ member(NP,Visited), \+ member((_:[NP|_]),Rest)),
+        Newfound
+        ),
+    append(Rest, Newfound, NewQueue),
+    sort(NewQueue,SortedQueue),
+    solve_task_astar(Task, SortedQueue, [Pos|Visited], Path))).
 
-% Calculate the path required to achieve a Task using breadth-first search
+% Calculate the path required to achieve a Task
 solve_task_bfs(Task,Queue,Visited,Path) :-
     Queue = [Next | Rest],
     Next = [Pos | RPath],
@@ -16,25 +37,6 @@ solve_task_bfs(Task,Queue,Visited,Path) :-
                                Newfound),
                       append(Rest,Newfound,NewQueue),
                       solve_task_bfs(Task,NewQueue,[Pos|Visited],Path))).
-    
-
-% Calculate the path required to achieve a Task using A* search
-solve_task_astar(Task,Queue,Visited,Path) :-
-    Queue = [Next | Rest],
-    Next = [_,_,G,Pos| RPath],
-    (achieved(Task,Pos) -> reverse([Pos|RPath],Path)
-    ;otherwise -> (findall(
-        [NF,NH,NG,NP|RPath],
-        (map_adjacent(Pos,NP,empty),
-        NG is G + 1,
-        manhattan_distance(NP,Pos,NH),
-        NF is NG + NH,
-        \+ member(NP,Visited), \+ member([_,_,_,NP|_],Rest)),
-        Newfound
-        ),
-    append(Rest, Newfound, NewQueue),
-    sort(NewQueue,SortedQueue),
-    solve_task_astar(Task, SortedQueue, [Pos | Visited], Path))).
 
 % True if the Task is achieved with the agent at Pos
 achieved(Task,Pos) :- 
@@ -42,14 +44,17 @@ achieved(Task,Pos) :-
     ;
     Task=go(Pos).
 
-% Manhattan distance between two positions
-manhattan_distance(p(X1,Y1),p(X2,Y2),Distance) :-
-    Distance is abs(X1 - X2) + abs(Y1 - Y2).
+% heruistic function to calculate the Distance from the Task
+heruistic(Task,NP,NF) :-
+    achieved(Task,Pos) -> map_distance(Pos,NP,NF),!                      
+    ;
+    otherwise -> Task = go(Pos), map_distance(Pos,NP,NF).
+
+% Two helper functions to help switch between target is known or unknown
+condition_find_true(Task) :-
+    Task = find(_).
 
 
-% (ground(Task) -> solve_task_astar(Task, [[38,38,0,P|RPath]], [], Path),   %something is wrong here?
-%                      agent_do_moves(A,Path), 
-%                      length(Path,Cost))
-%     ;otherwise -> solve_task_bfs(Task,[[P]],[],Path),
-%                   agent_do_moves(A,Path), 
-%                   length(Path,Cost).
+condition_go_true(Task) :-
+    Task = go(SubTask),
+    ground(SubTask).
