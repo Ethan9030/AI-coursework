@@ -7,8 +7,11 @@ solve_task(Task,Cost) :-
                             solve_task_astar(Task, [(D:[P])], [], Path),  
                             length(Path,Cost),
                             ((Cost > Energy) -> (solve_task(find(c(X)),_), 
-                                               agent_topup_energy(1,c(X)),  % the edge case is not solving
-                                               solve_task(Task,_))     % destination to the c(X)
+                                               agent_topup_energy(1,c(X)),  
+                                               solve_task(Task,_))
+                            ;((Energy - Cost) < 20) -> (solve_task(find(c(X)),_),  % not sure this is the right solution
+                                               agent_topup_energy(1,c(X)),  
+                                               solve_task(Task,_))  
                             ;otherwise -> agent_do_moves(A,Path)))
     ;condition_find_true(Task) -> (solve_task_bfs(Task,[[P]],[],Path),
                     agent_do_moves(A,Path), 
