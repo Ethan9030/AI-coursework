@@ -1,10 +1,15 @@
 % Accomplish a given Task and return the Cost
 solve_task(Task,Cost) :-
     my_agent(A), get_agent_position(A,P),
-    (condition_go_true(Task) -> (heruistic(Task,P,D),
-                            solve_task_astar(Task, [(D:[P])], [], Path),   
-                            agent_do_moves(A,Path), 
-                            length(Path,Cost))
+    get_agent_energy(1,Energy),
+    (condition_go_true(Task) -> ( 
+                            heruistic(Task,P,D),
+                            solve_task_astar(Task, [(D:[P])], [], Path),  
+                            length(Path,Cost),
+                            ((Cost > Energy) -> (solve_task(find(c(X)),_), 
+                                               agent_topup_energy(1,c(X)),  % the edge case is not solving
+                                               solve_task(Task,_))     % destination to the c(X)
+                            ;otherwise -> agent_do_moves(A,Path)))
     ;condition_find_true(Task) -> (solve_task_bfs(Task,[[P]],[],Path),
                     agent_do_moves(A,Path), 
                     length(Path,Cost))).
@@ -46,9 +51,7 @@ achieved(Task,Pos) :-
 
 % heruistic function to calculate the Distance from the Task
 heruistic(Task,NP,NF) :-
-    achieved(Task,Pos) -> map_distance(Pos,NP,NF),!                      
-    ;
-    otherwise -> Task = go(Pos), map_distance(Pos,NP,NF).
+    Task = go(Pos), map_distance(Pos,NP,NF).
 
 % Two helper functions to help switch between target is known or unknown
 condition_find_true(Task) :-
