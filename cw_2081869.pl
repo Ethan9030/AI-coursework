@@ -2,20 +2,27 @@
 solve_task(Task,Cost) :-
     my_agent(A), get_agent_position(A,P),
     get_agent_energy(1,Energy),
-    (condition_go_true(Task) -> ( 
+    ailp_grid_size(N),
+    (condition_go_true(Task) -> (
                             heruistic(Task,P,D),
-                            solve_task_astar(Task, [(D:[P])], [], Path),  
+                            solve_task_astar(Task, [(D:[P])], [], Path),
                             length(Path,Cost),
-                            ((Cost > Energy) -> (solve_task(find(c(X)),_), 
-                                               agent_topup_energy(1,c(X)),  
+                            ((Cost > Energy) -> (solve_task(find(c(X)),_),
+                                               agent_topup_energy(1,c(X)),
                                                solve_task(Task,_))
-                            ;((Energy - Cost) < 20) -> (solve_task(find(c(X)),_),  % not sure this is the right solution
-                                               agent_topup_energy(1,c(X)),  
-                                               solve_task(Task,_))  
+                            ;((Energy - Cost) < 2*N) -> (solve_task(find(c(X)),_),
+                                               agent_topup_energy(1,c(X)),
+                                               solve_task(Task,_))
                             ;otherwise -> agent_do_moves(A,Path)))
     ;condition_find_true(Task) -> (solve_task_bfs(Task,[[P]],[],Path),
-                    agent_do_moves(A,Path), 
-                    length(Path,Cost))).
+                    length(Path,Cost),
+                    ((Cost > Energy) -> (solve_task(find(c(X)),_),
+                                               agent_topup_energy(1,c(X)),
+                                               solve_task(Task,_))
+                            ;((Energy - Cost) < 2*N) -> (solve_task(find(c(X)),_),
+                                               agent_topup_energy(1,c(X)),
+                                               solve_task(Task,_))
+                            ;otherwise -> agent_do_moves(A,Path)))).
     
 % Calculate the path required to achieve a Task using A* search
 solve_task_astar(Task,Queue,Visited,Path) :-
